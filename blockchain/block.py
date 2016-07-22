@@ -257,13 +257,9 @@ class TransactionOutput(object):
         
         # pattern 3: RIPMD160???? 
         elif len(self.script_pub_key) >= 25 and self.script_pub_key[0:2] == b"\x76\xA9": # first two bytes indicate OP_DUP and OP_HASH160
-            #print("[+] script_pub_key: %s" % hexlify(self.script_pub_key))
             keyLen = self.script_pub_key[2] # byte 0x02 here is going to be the amount of data to push to the stack
-            #print("[+] keyLen: 0x%x" % keyLen)
             finalBytePosition = keyLen+3
-            #print("[+] finalBytePosition: %d" % finalBytePosition)
             data = self.script_pub_key[3:finalBytePosition]
-            #print("[+] data: %s" % hexlify(data))
             h1 = hashlib.sha256(b"\x00"+data).digest()
             h2 = hashlib.sha256(h1).digest()
             checksum = h2[:4]
@@ -273,13 +269,9 @@ class TransactionOutput(object):
 
         # pattern 6: Error?
         elif len(self.script_pub_key) == 23 and self.script_pub_key[0:2] == b"\xA9\x14": # first two bytes indicate OP_DUP and OP_HASH160
-            #print("[+] script_pub_key: %s" % hexlify(self.script_pub_key))
             keyLen = self.script_pub_key[2] # byte 0x02 here is going to be the amount of data to push to the stack
-            #print("[+] keyLen: 0x%x" % keyLen)
             finalBytePosition = keyLen+3
-            #print("[+] finalBytePosition: %d" % finalBytePosition)
             data = self.script_pub_key[3:finalBytePosition]
-            #print("[+] data: %s" % hexlify(data))
             h1 = hashlib.sha256(b"\x00"+data).digest()
             h2 = hashlib.sha256(h1).digest()
             checksum = h2[:4]
