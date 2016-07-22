@@ -9,7 +9,7 @@ from datetime import datetime
 import hashlib
 import struct
 from typing import Sequence
-
+from binascii import hexlify
 import base58
 
 
@@ -128,7 +128,7 @@ class BlockHeader(object):
         # unsigned int32 nonce
         header_fmt = '<III32s32sIII'
         tup = struct.unpack_from(header_fmt, data, offset=offset)
-
+        
         offset += struct.calcsize(header_fmt)
 
         return cls(*tup), offset
@@ -254,8 +254,51 @@ class TransactionOutput(object):
 
             address = base58.b58encode(bin_address)
             return address
+        
+        # pattern 3: RIPMD160???? 
+        elif len(self.script_pub_key) >= 25 and self.script_pub_key[0:2] == b"\x76\xA9": # first two bytes indicate OP_DUP and OP_HASH160
+            #print("[+] script_pub_key: %s" % hexlify(self.script_pub_key))
+            keyLen = self.script_pub_key[2] # byte 0x02 here is going to be the amount of data to push to the stack
+            #print("[+] keyLen: 0x%x" % keyLen)
+            finalBytePosition = keyLen+3
+            #print("[+] finalBytePosition: %d" % finalBytePosition)
+            data = self.script_pub_key[3:finalBytePosition]
+            #print("[+] data: %s" % hexlify(data))
+            h1 = hashlib.sha256(b"\x00"+data).digest()
+            h2 = hashlib.sha256(h1).digest()
+            checksum = h2[:4]
+            raw = b"\x00"+data+checksum
+            address = base58.b58encode(raw)
+            return address
+
+        # pattern 6: Error?
+        elif len(self.script_pub_key) == 23 and self.script_pub_key[0:2] == b"\xA9\x14": # first two bytes indicate OP_DUP and OP_HASH160
+            #print("[+] script_pub_key: %s" % hexlify(self.script_pub_key))
+            keyLen = self.script_pub_key[2] # byte 0x02 here is going to be the amount of data to push to the stack
+            #print("[+] keyLen: 0x%x" % keyLen)
+            finalBytePosition = keyLen+3
+            #print("[+] finalBytePosition: %d" % finalBytePosition)
+            data = self.script_pub_key[3:finalBytePosition]
+            #print("[+] data: %s" % hexlify(data))
+            h1 = hashlib.sha256(b"\x00"+data).digest()
+            h2 = hashlib.sha256(h1).digest()
+            checksum = h2[:4]
+            raw = b"\x00"+data+checksum
+            address = base58.b58encode(raw)
+            return address
+
+        #else: # for debugging
+        #    print("[+] I DON'T UNDERSTAND")
+        #    print(len(self.script_pub_key))
+        #    print(hexlify(self.script_pub_key))
+        #    print(hexlify(self.script_pub_key[0:2]))
+        #    print(type(self.script_pub_key[0:2]))
+        #    print(type(b"\x76\xA9"))
+        #    pass
+        
         else:
-            raise NotImplemented()
+            pass
+            #raise NotImplemented()
 
     @classmethod
     def from_binary_data(
